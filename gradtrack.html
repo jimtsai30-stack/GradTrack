@@ -139,6 +139,7 @@
   .course-item:hover { background: var(--hover-bg); }
   .course-item input[type=checkbox] { margin-top: 2px; flex-shrink: 0; }
   .course-item.checked { background: var(--done-bg); }
+  .course-item.search-match { outline: 2px solid var(--accent); outline-offset: -2px; }
   .course-item .credit { color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
   .course-item.checked .credit { color: var(--done-text); }
   .course-item.restricted { background: var(--restricted-bg); opacity: .65; cursor: not-allowed; }
@@ -199,12 +200,25 @@
     </div>
 
     <button class="reset-btn" id="resetBtn">清除所有勾選紀錄</button>
+
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="reset-btn" id="exportBackupBtn" style="color:var(--accent);border-color:var(--accent);">匯出備份</button>
+      <button class="reset-btn" id="importBackupBtn" style="color:var(--accent);border-color:var(--accent);">匯入備份</button>
+      <input type="file" id="importBackupFile" accept="application/json" style="display:none;">
+    </div>
+    <div id="backupMsg" style="font-size:12px;color:var(--muted);margin-top:4px;"></div>
   </div>
 
-  <div id="tablesContainer"></div>
+  <div>
+    <div class="panel" style="margin-bottom:12px;">
+      <input type="text" id="courseSearch" placeholder="搜尋課程名稱..." style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--card);color:var(--text);box-sizing:border-box;">
+      <div id="courseSearchMsg" style="font-size:12px;color:var(--muted);margin-top:6px;"></div>
+    </div>
+    <div id="tablesContainer"></div>
+  </div>
 </div>
 
-<footer>資料來源：Curriculum_BS112_20260420.pdf（系課表）、112學年度第一學期通識課程表.pdf（通識中心）。核心課程每科3學分、多元選修每科2學分為課表載明之標準學分數，龜山區稻米產業多元化-清酒釀造（1.5學分）、各微學分課程（0.5學分）等特殊課程則依課表個別標示。若你實際修課學分與此不同，可直接修改右側數字。此工具資料僅存於你目前使用的瀏覽器本機（localStorage），不會上傳到任何伺服器，換裝置或換瀏覽器不會同步。</footer>
+<footer>資料來源：Curriculum_BS112_20260420.pdf（系課表）、112學年度第一學期通識課程表.pdf（通識中心）。核心課程每科3學分、多元選修每科2學分為課表載明之標準學分數，龜山區稻米產業多元化-清酒釀造（1.5學分）、各微學分課程（0.5學分）等特殊課程則依課表個別標示。若你實際修課學分與此不同，可直接修改右側數字。此工具資料僅存於你目前使用的瀏覽器本機（localStorage），不會上傳到任何伺服器，換裝置或換瀏覽器不會同步；如需搬移資料，請用左側「匯出備份」/「匯入備份」。</footer>
 
 <script>
 const YEAR_TERMS = [
@@ -631,7 +645,30 @@ function renderTables() {
       renderSummary();
     });
   });
+
+  applyCourseSearch();
 }
+
+function courseItemName(item) {
+  const span = item.querySelector('span');
+  return span && span.firstChild ? span.firstChild.textContent.trim() : item.textContent.trim();
+}
+
+function applyCourseSearch() {
+  const raw = document.getElementById('courseSearch').value;
+  const q = normalizeName(raw);
+  const items = document.querySelectorAll('#tablesContainer .course-item');
+  let matchCount = 0;
+  items.forEach(item => {
+    const match = !q || normalizeName(courseItemName(item)).includes(q);
+    item.style.display = match ? '' : 'none';
+    item.classList.toggle('search-match', !!q && match);
+    if (q && match) matchCount++;
+  });
+  document.getElementById('courseSearchMsg').textContent = q ? `找到 ${matchCount} 筆符合「${raw}」的課程` : '';
+}
+
+document.getElementById('courseSearch').addEventListener('input', applyCourseSearch);
 
 function renderGE(container) {
   const title = document.createElement('div');
@@ -713,7 +750,9 @@ function computeGE() {
   const computingRaw = bySub.multi_computing + (aiExempt ? 1 : 0);
 
   const multiDomains = ['multi_humanities','multi_social','multi_science','multi_computing','multi_inter'];
-  const domainCovered = multiDomains.filter(d => (d === 'multi_computing' ? computingRaw : bySub[d]) > 0).length;
+  const coveredDomains = multiDomains.filter(d => (d === 'multi_computing' ? computingRaw : bySub[d]) > 0);
+  const missingDomains = multiDomains.filter(d => !coveredDomains.includes(d));
+  const domainCovered = coveredDomains.length;
 
   const multiRealTotal = multiDomains.reduce((sum, d) => sum + bySub[d], 0);
   // 扣抵後多元選修實際需修 10 學分（11 - 1），不額外加虛擬學分，否則會跟總學分進度不一致
@@ -721,7 +760,7 @@ function computeGE() {
 
   const total = bySub.english + bySub.core_art + bySub.core_civic + multiRealTotal;
 
-  return { bySub, aiExempt, computingRaw, domainCovered, multiRealTotal, multiTarget, total };
+  return { bySub, aiExempt, computingRaw, domainCovered, missingDomains, multiRealTotal, multiTarget, total };
 }
 
 function renderSummary() {
@@ -791,7 +830,10 @@ function renderSummary() {
     {label:'通識－核心藝術人文至少6學分（含1門中文類）', val:`${round1(ge.bySub.core_art)}/6`, ok: ge.bySub.core_art >= 6 && GE_COURSES.some(c => c.sub==='core_art' && c.chinese && geChecked[geKey(c)])},
     {label:'通識－核心公民社會至少6學分', val:`${round1(ge.bySub.core_civic)}/6`, ok: ge.bySub.core_civic >= 6},
     {label:`通識－多元選修至少${ge.multiTarget}學分${ge.aiExempt ? '（已扣抵AI概論1學分）' : ''}`, val:`${round1(ge.multiRealTotal)}/${ge.multiTarget}`, ok: ge.multiRealTotal >= ge.multiTarget},
-    {label:'通識－多元選修至少涵蓋3個領域', val:`${ge.domainCovered}/3`, ok: ge.domainCovered >= 3},
+    {label:'通識－多元選修至少涵蓋3個領域', val: ge.domainCovered >= 3
+      ? `${ge.domainCovered}/3`
+      : `${ge.domainCovered}/3（尚缺：${ge.missingDomains.map(d => MULTI_DOMAIN_META[d]).join('、')}）`,
+      ok: ge.domainCovered >= 3},
   ];
   document.getElementById('ruleList').innerHTML = rules.map(r =>
     `<li><span>${r.label}</span><span class="${r.ok ? 'ok' : 'bad'}">${r.val} ${r.ok ? '✓' : '✗'}</span></li>`
@@ -818,6 +860,77 @@ document.getElementById('resetBtn').addEventListener('click', () => {
     renderTables();
     renderSummary();
   }
+});
+
+// ---- 備份匯出／匯入 ----
+document.getElementById('exportBackupBtn').addEventListener('click', () => {
+  const backup = {
+    app: 'gradtrack_bs112',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    data: {
+      [STORAGE_KEY]: checked,
+      [GE_STORAGE_KEY]: geChecked,
+      [GE_CREDIT_OVERRIDE_KEY]: geCreditOverride,
+      [EXTERNAL_ELECTIVE_KEY]: getExternalElective(),
+    },
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `gradtrack_backup_${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  document.getElementById('backupMsg').textContent = '已匯出備份檔案，換裝置或換瀏覽器時可用「匯入備份」還原。';
+});
+
+document.getElementById('importBackupBtn').addEventListener('click', () => {
+  document.getElementById('importBackupFile').click();
+});
+
+document.getElementById('importBackupFile').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    let parsed;
+    try {
+      parsed = JSON.parse(reader.result);
+    } catch (err) {
+      document.getElementById('backupMsg').textContent = '匯入失敗：檔案不是有效的 JSON 格式。';
+      e.target.value = '';
+      return;
+    }
+    if (!parsed || typeof parsed !== 'object' || typeof parsed.data !== 'object') {
+      document.getElementById('backupMsg').textContent = '匯入失敗：不是本工具匯出的備份檔。';
+      e.target.value = '';
+      return;
+    }
+    if (!confirm('匯入備份會覆蓋目前所有勾選紀錄與學分設定，確定要匯入嗎？')) {
+      e.target.value = '';
+      return;
+    }
+    checked = parsed.data[STORAGE_KEY] || {};
+    geChecked = parsed.data[GE_STORAGE_KEY] || {};
+    geCreditOverride = parsed.data[GE_CREDIT_OVERRIDE_KEY] || {};
+    const ext = parsed.data[EXTERNAL_ELECTIVE_KEY];
+    saveJSON(STORAGE_KEY, checked);
+    saveJSON(GE_STORAGE_KEY, geChecked);
+    saveJSON(GE_CREDIT_OVERRIDE_KEY, geCreditOverride);
+    if (ext !== undefined && ext !== null) {
+      localStorage.setItem(EXTERNAL_ELECTIVE_KEY, ext);
+    } else {
+      localStorage.removeItem(EXTERNAL_ELECTIVE_KEY);
+    }
+    renderTables();
+    renderSummary();
+    document.getElementById('backupMsg').textContent = '匯入成功，畫面已還原成備份檔的狀態。';
+    e.target.value = '';
+  };
+  reader.readAsText(file, 'utf-8');
 });
 
 // ---- 批次匯入 ----
