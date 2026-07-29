@@ -1,3 +1,4 @@
+
 <title>GradTrack - 資訊管理學系畢業學分規劃</title>
 <style>
   :root {
@@ -544,6 +545,15 @@ function loadJSON(key) {
 }
 function saveJSON(key, obj) { localStorage.setItem(key, JSON.stringify(obj)); }
 
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 let checked = loadJSON(STORAGE_KEY);
 let geChecked = loadJSON(GE_STORAGE_KEY);
 let geCreditOverride = loadJSON(GE_CREDIT_OVERRIDE_KEY);
@@ -699,19 +709,19 @@ function computeGE() {
   });
 
   const aiExempt = !!checked['管院共構必修|人工智慧語言與產業應用'];
-  // 多元-運算思維領域：AI概論 1 學分若透過管院共構必修抵免則自動視為已涵蓋（不重複計入128總學分，只用於子規則判斷）
+  // 多元-運算思維領域：AI概論 1 學分若透過管院共構必修抵免則自動視為已涵蓋（只用於「至少涵蓋3個領域」的判斷，不重複計入學分數）
   const computingRaw = bySub.multi_computing + (aiExempt ? 1 : 0);
 
   const multiDomains = ['multi_humanities','multi_social','multi_science','multi_computing','multi_inter'];
   const domainCovered = multiDomains.filter(d => (d === 'multi_computing' ? computingRaw : bySub[d]) > 0).length;
 
-  const multiRealTotal = multiDomains.reduce((sum, d) => sum + (d === 'multi_computing' ? bySub[d] : bySub[d]), 0);
-  const multiRawTotal = multiRealTotal + (aiExempt ? 1 : 0);
+  const multiRealTotal = multiDomains.reduce((sum, d) => sum + bySub[d], 0);
+  // 扣抵後多元選修實際需修 10 學分（11 - 1），不額外加虛擬學分，否則會跟總學分進度不一致
   const multiTarget = aiExempt ? 10 : 11;
 
   const total = bySub.english + bySub.core_art + bySub.core_civic + multiRealTotal;
 
-  return { bySub, aiExempt, computingRaw, domainCovered, multiRawTotal, multiTarget, total };
+  return { bySub, aiExempt, computingRaw, domainCovered, multiRealTotal, multiTarget, total };
 }
 
 function renderSummary() {
@@ -726,6 +736,12 @@ function renderSummary() {
     }
   });
   totals.general_education = ge.total;
+
+  const ext = getExternalElective();
+  const extCounted = Math.min(ext, 12);
+  const deptInternal = totals.dept_elective;
+  // 系選修分類進度／總學分進度都要含採計的外系選修學分，才會跟下方細項規則檢查一致
+  totals.dept_elective = deptInternal + extCounted;
 
   const grandTotal = Object.values(totals).reduce((a,b) => a+b, 0);
   const GRAD_TOTAL = 128;
@@ -749,8 +765,6 @@ function renderSummary() {
       ${c.note ? `<div class="elective-note">${c.note}</div>` : ''}
     `;
     if (c.key === 'dept_elective') {
-      const deptInternal = totals.dept_elective;
-      const ext = getExternalElective();
       const manualDiv = document.createElement('div');
       manualDiv.className = 'manual-input';
       manualDiv.innerHTML = `<label style="font-size:12px;color:var(--muted)">外系選修學分（至多採計12）：</label>
@@ -769,9 +783,6 @@ function renderSummary() {
   }
 
   // 細項規則檢查
-  const ext = getExternalElective();
-  const extCounted = Math.min(ext, 12);
-  const deptInternal = totals.dept_elective;
   const rules = [
     {label:'系選修－系內至少27學分', val:`${round1(deptInternal)}/27`, ok: deptInternal >= 27},
     {label:'系選修－外系至多採計12學分', val:`${round1(extCounted)}/12（實填${round1(ext)}）`, ok: true},
@@ -779,7 +790,7 @@ function renderSummary() {
     {label:'通識－英文領域至少6學分', val:`${round1(ge.bySub.english)}/6`, ok: ge.bySub.english >= 6},
     {label:'通識－核心藝術人文至少6學分（含1門中文類）', val:`${round1(ge.bySub.core_art)}/6`, ok: ge.bySub.core_art >= 6 && GE_COURSES.some(c => c.sub==='core_art' && c.chinese && geChecked[geKey(c)])},
     {label:'通識－核心公民社會至少6學分', val:`${round1(ge.bySub.core_civic)}/6`, ok: ge.bySub.core_civic >= 6},
-    {label:`通識－多元選修至少${ge.multiTarget}學分${ge.aiExempt ? '（已扣抵AI概論1學分）' : ''}`, val:`${round1(ge.multiRawTotal)}/${ge.multiTarget}`, ok: ge.multiRawTotal >= ge.multiTarget},
+    {label:`通識－多元選修至少${ge.multiTarget}學分${ge.aiExempt ? '（已扣抵AI概論1學分）' : ''}`, val:`${round1(ge.multiRealTotal)}/${ge.multiTarget}`, ok: ge.multiRealTotal >= ge.multiTarget},
     {label:'通識－多元選修至少涵蓋3個領域', val:`${ge.domainCovered}/3`, ok: ge.domainCovered >= 3},
   ];
   document.getElementById('ruleList').innerHTML = rules.map(r =>
@@ -812,11 +823,14 @@ document.getElementById('resetBtn').addEventListener('click', () => {
 // ---- 批次匯入 ----
 function normalizeName(s) {
   return s
+    .normalize('NFKC')
+    .replace(/[​-‏‪-‮⁠﻿­]/g, '')
     .replace(/[\s　]+/g, '')
     .replace(/[（(]/g, '(')
     .replace(/[）)]/g, ')')
     .replace(/[：:]/g, ':')
     .replace(/[，,]/g, ',')
+    .replace(/[－—]/g, '-')
     .replace(/[０-９]/g, d => String.fromCharCode(d.charCodeAt(0) - 0xFEE0))
     .toLowerCase();
 }
@@ -874,7 +888,7 @@ document.getElementById('importBtn').addEventListener('click', () => {
   document.getElementById('importResult').textContent =
     `共 ${lines.length} 行，成功比對 ${matched} 筆，未辨識 ${unmatched.length} 筆`;
   document.getElementById('importUnmatched').innerHTML = unmatched.length
-    ? unmatched.map(l => `<li>${l}</li>`).join('')
+    ? unmatched.map(l => `<li>${escapeHtml(l)}</li>`).join('')
     : '';
 });
 
