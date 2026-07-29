@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GradTrack - 資訊管理學系畢業學分規劃</title>
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --card: #ffffff;
+    --border: #e1e4e8;
+    --text: #1f2328;
+    --muted: #6b7280;
+    --accent: #2563eb;
+    --done: #16a34a;
+    --done-bg: #dcfce7;
+    --done-text: #15803d;
+    --warn: #dc2626;
+    --restricted-bg: #f3f4f6;
+    --subtle-bg: #edf0f3;
+    --th-bg: #f0f2f5;
+    --hover-bg: #f5f6f8;
+    --chip-bg: #fef3c7;
+    --chip-text: #b45309;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151c;
+      --card: #1b1f29;
+      --border: #2a3040;
+      --text: #e7e9f0;
+      --muted: #99a2b8;
+      --accent: #7ea2ff;
+      --done: #34d399;
+      --done-bg: rgba(52,211,153,0.16);
+      --done-text: #6ee7b7;
+      --warn: #f87171;
+      --restricted-bg: #1f2430;
+      --subtle-bg: #232838;
+      --th-bg: #202536;
+      --hover-bg: #202536;
+      --chip-bg: rgba(245,158,11,0.18);
+      --chip-text: #fbbf24;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #12151c;
+    --card: #1b1f29;
+    --border: #2a3040;
+    --text: #e7e9f0;
+    --muted: #99a2b8;
+    --accent: #7ea2ff;
+    --done: #34d399;
+    --done-bg: rgba(52,211,153,0.16);
+    --done-text: #6ee7b7;
+    --warn: #f87171;
+    --restricted-bg: #1f2430;
+    --subtle-bg: #232838;
+    --th-bg: #202536;
+    --hover-bg: #202536;
+    --chip-bg: rgba(245,158,11,0.18);
+    --chip-text: #fbbf24;
+  }
+  :root[data-theme="light"] {
+    --bg: #f5f6f8;
+    --card: #ffffff;
+    --border: #e1e4e8;
+    --text: #1f2328;
+    --muted: #6b7280;
+    --accent: #2563eb;
+    --done: #16a34a;
+    --done-bg: #dcfce7;
+    --done-text: #15803d;
+    --warn: #dc2626;
+    --restricted-bg: #f3f4f6;
+    --subtle-bg: #edf0f3;
+    --th-bg: #f0f2f5;
+    --hover-bg: #f5f6f8;
+    --chip-bg: #fef3c7;
+    --chip-text: #b45309;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Microsoft JhengHei", "PingFang TC", -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 24px;
+  }
+  h1 { font-size: 22px; margin: 0 0 4px; text-wrap: balance; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  .layout { display: grid; grid-template-columns: 320px 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin-bottom: 16px;
+  }
+  .panel h2 { font-size: 15px; margin: 0 0 12px; }
+  .sticky { position: sticky; top: 24px; }
+  .total-num { font-size: 32px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .total-num span { font-size: 16px; color: var(--muted); font-weight: 400; }
+  .bar-bg { background: var(--subtle-bg); border-radius: 6px; height: 8px; overflow: hidden; margin-top: 6px; }
+  .bar-fill { background: var(--accent); height: 100%; border-radius: 6px; transition: width .2s; }
+  @media (prefers-reduced-motion: reduce) { .bar-fill { transition: none; } }
+  .cat-row { margin-bottom: 12px; }
+  .cat-row-head { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; }
+  .cat-row-head .name { font-weight: 600; }
+  .cat-row-head .num { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .cat-row.done .bar-fill { background: var(--done); }
+  .manual-input { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  .manual-input input {
+    width: 70px; padding: 4px 6px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px;
+    background: var(--card); color: var(--text);
+  }
+  .missing-list { list-style: none; padding: 0; margin: 0; font-size: 13px; }
+  .missing-list li { padding: 4px 0; border-bottom: 1px dashed var(--border); color: var(--warn); }
+  .missing-list li:last-child { border-bottom: none; }
+  .missing-empty { color: var(--done); font-size: 13px; }
+  .rule-list { list-style: none; padding: 0; margin: 0; font-size: 12.5px; }
+  .rule-list li { padding: 4px 0; border-bottom: 1px dashed var(--border); display: flex; justify-content: space-between; gap: 8px; }
+  .rule-list li:last-child { border-bottom: none; }
+  .rule-list .ok { color: var(--done); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .rule-list .bad { color: var(--warn); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .group-title { font-size: 16px; font-weight: 700; margin: 24px 0 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; text-wrap: balance; }
+  .group-title .credit-tag {
+    font-size: 12px; font-weight: 400; color: var(--muted); background: var(--subtle-bg); padding: 2px 8px; border-radius: 10px;
+  }
+  .table-wrap { overflow-x: auto; }
+  table.course-table { border-collapse: collapse; width: 100%; min-width: 760px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  table.course-table th {
+    background: var(--th-bg); font-size: 12px; padding: 8px 6px; border: 1px solid var(--border); white-space: nowrap;
+  }
+  table.course-table td {
+    border: 1px solid var(--border); vertical-align: top; padding: 6px; width: 12.5%;
+  }
+  .course-item {
+    display: flex; align-items: flex-start; gap: 6px; padding: 3px 4px; border-radius: 5px; font-size: 12.5px; margin-bottom: 2px; cursor: pointer;
+  }
+  .course-item:hover { background: var(--hover-bg); }
+  .course-item input[type=checkbox] { margin-top: 2px; flex-shrink: 0; }
+  .course-item.checked { background: var(--done-bg); }
+  .course-item .credit { color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .course-item.checked .credit { color: var(--done-text); }
+  .course-item.restricted { background: var(--restricted-bg); opacity: .65; cursor: not-allowed; }
+  .course-item.restricted .restrict-note { color: var(--warn); display: block; font-size: 11px; }
+  .elective-note { font-size: 12px; color: var(--muted); margin: 4px 0 10px; }
+  footer { margin-top: 30px; font-size: 12px; color: var(--muted); }
+  .reset-btn {
+    font-size: 12px; color: var(--muted); background: none; border: 1px solid var(--border); border-radius: 6px;
+    padding: 4px 10px; cursor: pointer; margin-top: 10px;
+  }
+  .reset-btn:hover { border-color: var(--warn); color: var(--warn); }
+  .ge-domain { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; }
+  .ge-domain-head { font-weight: 700; font-size: 14px; margin-bottom: 8px; display: flex; justify-content: space-between; }
+  .ge-domain-head .credit-tag { font-size: 12px; font-weight: 400; color: var(--muted); }
+  .ge-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 2px; }
+  .cred-input { width: 44px; padding: 1px 3px; border: 1px solid var(--border); border-radius: 4px; font-size: 11.5px; background: var(--card); color: var(--text); }
+  .tag-chinese { font-size: 10.5px; color: var(--chip-text); background: var(--chip-bg); padding: 0 5px; border-radius: 8px; margin-left: 4px; }
+  textarea, input, button { font-family: inherit; }
+  button:focus-visible, input:focus-visible, textarea:focus-visible, .course-item input:focus-visible + span {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+</style>
+
+</head>
+<body>
+
+<h1>GradTrack｜資訊管理學系畢業學分規劃</h1>
+<div class="sub">長庚大學 資訊管理學系（112學年度入學適用）｜畢業學分 128｜勾選已修課程，進度會即時更新並存在瀏覽器本機</div>
+
+<div class="panel" id="importPanel">
+  <h2>批次匯入已修課程</h2>
+  <div class="elective-note">從教務系統匯出的修課/成績紀錄，每行貼一筆課程（後面接學分、成績等其他欄位也沒關係，系統只抓課程名稱），貼上後按「一鍵套用」即可自動勾選所有比對成功的課程。比對不到的行會列在下方，需要自己手動勾選。</div>
+  <textarea id="importText" rows="6" style="width:100%;font-size:13px;padding:8px;border:1px solid var(--border);border-radius:8px;font-family:inherit;resize:vertical;background:var(--card);color:var(--text);" placeholder="程式設計(1)	4	78&#10;資料結構	3	85&#10;文學中的現代軌跡	3	90"></textarea>
+  <div style="margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+    <button id="importBtn" class="reset-btn" style="color:var(--accent);border-color:var(--accent);">一鍵套用</button>
+    <span id="importResult" style="font-size:12.5px;color:var(--muted);"></span>
+  </div>
+  <ul class="missing-list" id="importUnmatched"></ul>
+</div>
+
+<div class="layout">
+  <div class="sticky">
+    <div class="panel">
+      <h2>總學分進度</h2>
+      <div class="total-num" id="totalNum">0<span> / 128</span></div>
+      <div class="bar-bg"><div class="bar-fill" id="totalBar" style="width:0%"></div></div>
+    </div>
+
+    <div class="panel" id="categoryPanel">
+      <h2>分類進度</h2>
+    </div>
+
+    <div class="panel">
+      <h2>細項規則檢查</h2>
+      <ul class="rule-list" id="ruleList"></ul>
+    </div>
+
+    <div class="panel">
+      <h2>尚未完成必修</h2>
+      <ul class="missing-list" id="missingList"></ul>
+    </div>
+
+    <button class="reset-btn" id="resetBtn">清除所有勾選紀錄</button>
+  </div>
+
+  <div id="tablesContainer"></div>
+</div>
+
+<footer>資料來源：Curriculum_BS112_20260420.pdf（系課表）、112學年度第一學期通識課程表.pdf（通識中心）。核心課程每科3學分、多元選修每科2學分為課表載明之標準學分數，龜山區稻米產業多元化-清酒釀造（1.5學分）、各微學分課程（0.5學分）等特殊課程則依課表個別標示。若你實際修課學分與此不同，可直接修改右側數字。此工具資料僅存於你目前使用的瀏覽器本機（localStorage），不會上傳到任何伺服器，換裝置或換瀏覽器不會同步。</footer>
+
+<script>
+const YEAR_TERMS = [
+  {y:1,t:'上',label:'大一上'}, {y:1,t:'下',label:'大一下'},
+  {y:2,t:'上',label:'大二上'}, {y:2,t:'下',label:'大二下'}, {y:2,t:'暑',label:'大二暑'},
+  {y:3,t:'上',label:'大三上'}, {y:3,t:'下',label:'大三下'}, {y:3,t:'暑',label:'大三暑'},
+  {y:4,t:'上',label:'大四上'}, {y:4,t:'下',label:'大四下'},
+];
+
+const COURSES = [
+  // 管院共構必修 (12)
+  {name:'人工智慧語言與產業應用', credit:3, y:1, t:'上', group:'管院共構必修', required:true, cat:'college_required'},
+  {name:'統計學(1)', credit:3, y:1, t:'上', group:'管院共構必修', required:true, cat:'college_required'},
+  {name:'會計學(1)', credit:3, y:1, t:'下', group:'管院共構必修', required:true, cat:'college_required'},
+  {name:'經濟學(1)', credit:3, y:2, t:'下', group:'管院共構必修', required:true, cat:'college_required'},
+
+  {name:'實用英文(一)：閱讀與寫作', credit:2, y:1, t:'下', group:'管院共構選修', required:false, cat:'other'},
+  {name:'實用英文(一)：聽與說', credit:2, y:1, t:'下', group:'管院共構選修', required:false, cat:'other'},
+  {name:'實用英文(二)：閱讀與寫作', credit:2, y:2, t:'上', group:'管院共構選修', required:false, cat:'other'},
+  {name:'實用英文(二)：聽與說', credit:2, y:2, t:'上', group:'管院共構選修', required:false, cat:'other'},
+  {name:'綠色經濟學', credit:2, y:2, t:'下', group:'管院共構選修', required:false, cat:'other'},
+  {name:'平台策略', credit:3, y:3, t:'下', group:'管院共構選修', required:false, cat:'other'},
+
+  // 系訂必修 (49)
+  {name:'微積分', credit:3, y:1, t:'上', group:'系訂必修', required:true, cat:'dept_required'},
+  {name:'計算機概論', credit:3, y:1, t:'上', group:'系訂必修', required:true, cat:'dept_required'},
+  {name:'程式設計(1)', credit:4, y:1, t:'上', group:'系訂必修', required:true, cat:'dept_required'},
+  {name:'程式設計(2)', credit:4, y:1, t:'下', group:'系訂必修', required:true, cat:'dept_required'},
+  {name:'統計學(2)', credit:3, y:1, t:'下', group:'系訂必修', required:true, cat:'dept_required'},
+  {name:'管理學', credit:3, y:2, t:'上', group:'系訂必修', required:true, cat:'dept_required'},
+  {name:'溝通技巧與表達', credit:2, y:2, t:'上', group:'系訂必修', required:true, cat:'dept_required'},
+  {name:'資料結構', credit:3, y:2, t:'上', group:'系訂必修', required:true, cat:'dept_required'},
+  {name:'電腦網路', credit:3, y:2, t:'下', group:'系訂必修', required:true, cat:'dept_required'},
+  {name:'資料庫管理', credit:3, y:2, t:'下', group:'系訂必修', required:true, cat:'dept_required'},
+  {name:'網頁程式設計(1)', credit:3, y:2, t:'下', group:'系訂必修', required:true, cat:'dept_required'},
+  {name:'系統分析與設計', credit:3, y:3, t:'上', group:'系訂必修', required:true, cat:'dept_required'},
+  {name:'管理資訊系統', credit:3, y:3, t:'上', group:'系訂必修', required:true, cat:'dept_required'},
+  {name:'資訊倫理與法律', credit:3, y:3, t:'下', group:'系訂必修', required:true, cat:'dept_required'},
+  {name:'畢業專題(1)', credit:3, y:3, t:'下', group:'系訂必修', required:true, cat:'dept_required'},
+  {name:'畢業專題(2)', credit:3, y:4, t:'上', group:'系訂必修', required:true, cat:'dept_required'},
+
+  // 系選修 - 產業實務領域
+  {name:'資訊管理專題實作(1)', credit:1, y:2, t:'下', group:'產業實務領域選修', required:false, cat:'dept_elective'},
+  {name:'資訊管理專題實作(2)', credit:1, y:3, t:'上', group:'產業實務領域選修', required:false, cat:'dept_elective'},
+  {name:'校外實習', credit:3, y:3, t:'上', group:'產業實務領域選修', required:false, cat:'dept_elective'},
+  {name:'企業實習', credit:6, y:4, t:'下', group:'產業實務領域選修', required:false, cat:'dept_elective'},
+  {name:'台塑企業實習', credit:9, y:4, t:'下', group:'產業實務領域選修', required:false, cat:'dept_elective'},
+
+  // 系選修 - 資訊管理領域
+  {name:'資訊管理導論', credit:3, y:1, t:'下', group:'資訊管理領域選修', required:false, cat:'dept_elective'},
+  {name:'行銷管理', credit:3, y:2, t:'下', group:'資訊管理領域選修', required:false, cat:'dept_elective'},
+  {name:'網路行銷', credit:3, y:3, t:'上', group:'資訊管理領域選修', required:false, cat:'dept_elective'},
+  {name:'程式交易', credit:3, y:4, t:'上', group:'資訊管理領域選修', required:false, cat:'dept_elective'},
+  {name:'生產與作業管理', credit:3, y:2, t:'下', group:'資訊管理領域選修', required:false, cat:'dept_elective'},
+  {name:'人力資源管理', credit:3, y:3, t:'上', group:'資訊管理領域選修', required:false, cat:'dept_elective'},
+  {name:'專案管理', credit:3, y:4, t:'上', group:'資訊管理領域選修', required:false, cat:'dept_elective'},
+  {name:'物聯網概論', credit:3, y:2, t:'下', group:'資訊管理領域選修', required:false, cat:'dept_elective'},
+  {name:'物流與供應鏈管理', credit:3, y:3, t:'上', group:'資訊管理領域選修', required:false, cat:'dept_elective'},
+  {name:'顧客關係管理與商業智慧', credit:3, y:4, t:'上', group:'資訊管理領域選修', required:false, cat:'dept_elective'},
+  {name:'電子商務', credit:3, y:3, t:'下', group:'資訊管理領域選修', required:false, cat:'dept_elective'},
+  {name:'大數據應用與電子商務', credit:3, y:4, t:'上', group:'資訊管理領域選修', required:false, cat:'dept_elective'},
+  {name:'財務管理', credit:3, y:3, t:'下', group:'資訊管理領域選修', required:false, cat:'dept_elective'},
+  {name:'企業資源規劃', credit:3, y:4, t:'上', group:'資訊管理領域選修', required:false, cat:'dept_elective'},
+  {name:'管理科學', credit:3, y:4, t:'上', group:'資訊管理領域選修', required:false, cat:'dept_elective'},
+  {name:'知識管理', credit:3, y:4, t:'下', group:'資訊管理領域選修', required:false, cat:'dept_elective'},
+  {name:'數位行銷', credit:2, y:4, t:'下', group:'資訊管理領域選修', required:false, cat:'dept_elective'},
+  {name:'服務科學與管理', credit:3, y:4, t:'下', group:'資訊管理領域選修', required:false, cat:'dept_elective'},
+  {name:'數位轉型全球觀點', credit:2, y:4, t:'下', group:'資訊管理領域選修', required:false, cat:'dept_elective'},
+  {name:'精實供應鏈管理', credit:3, y:4, t:'下', group:'資訊管理領域選修', required:false, cat:'dept_elective'},
+
+  // 系選修 - 資訊技術領域
+  {name:'資訊技術實務', credit:3, y:1, t:'上', group:'資訊技術領域選修', required:false, cat:'dept_elective'},
+  {name:'C語言程式設計', credit:3, y:2, t:'上', group:'資訊技術領域選修', required:false, cat:'dept_elective'},
+  {name:'視窗程式設計', credit:3, y:3, t:'上', group:'資訊技術領域選修', required:false, cat:'dept_elective'},
+  {name:'醫療資訊交換實務', credit:0.5, y:4, t:'上', group:'資訊技術領域選修', required:false, cat:'dept_elective'},
+  {name:'資訊科技專業詞彙', credit:3, y:1, t:'下', group:'資訊技術領域選修', required:false, cat:'dept_elective'},
+  {name:'行動裝置應用程式設計', credit:3, y:2, t:'下', group:'資訊技術領域選修', required:false, cat:'dept_elective'},
+  {name:'網頁程式設計(2)', credit:3, y:3, t:'上', group:'資訊技術領域選修', required:false, cat:'dept_elective'},
+  {name:'醫療資訊系統分析', credit:0.5, y:4, t:'上', group:'資訊技術領域選修', required:false, cat:'dept_elective'},
+  {name:'網路系統管理實務', credit:3, y:2, t:'下', group:'資訊技術領域選修', required:false, cat:'dept_elective'},
+  {name:'作業系統', credit:3, y:3, t:'下', group:'資訊技術領域選修', required:false, cat:'dept_elective'},
+  {name:'銀行金融資訊系統實務', credit:0.5, y:4, t:'上', group:'資訊技術領域選修', required:false, cat:'dept_elective'},
+  {name:'企業網站開發', credit:3, y:3, t:'下', group:'資訊技術領域選修', required:false, cat:'dept_elective'},
+  {name:'銀行金融資訊系統分析', credit:0.5, y:4, t:'上', group:'資訊技術領域選修', required:false, cat:'dept_elective'},
+
+  // 系選修 - 資通訊安全領域
+  {name:'資訊安全導論', credit:3, y:2, t:'上', group:'資通訊安全領域選修', required:false, cat:'dept_elective'},
+  {name:'網路安全', credit:3, y:3, t:'上', group:'資通訊安全領域選修', required:false, cat:'dept_elective'},
+  {name:'數位鑑識', credit:3, y:4, t:'上', group:'資通訊安全領域選修', required:false, cat:'dept_elective'},
+  {name:'資訊系統稽核與管理', credit:3, y:2, t:'下', group:'資通訊安全領域選修', required:false, cat:'dept_elective'},
+  {name:'網路攻防技術與應用', credit:3, y:3, t:'下', group:'資通訊安全領域選修', required:false, cat:'dept_elective'},
+  {name:'區塊鏈實務與應用', credit:3, y:2, t:'下', group:'資通訊安全領域選修', required:false, cat:'dept_elective'},
+  {name:'醫療系統安全', credit:3, y:3, t:'下', group:'資通訊安全領域選修', required:false, cat:'dept_elective'},
+
+  // 系選修 - 數據創新與智能互動領域
+  {name:'應用統計學', credit:3, y:2, t:'上', group:'數據創新與智能互動領域選修', required:false, cat:'dept_elective'},
+  {name:'大數據分析方法', credit:3, y:3, t:'上', group:'數據創新與智能互動領域選修', required:false, cat:'dept_elective'},
+  {name:'大數據處理與分析技術', credit:3, y:4, t:'上', group:'數據創新與智能互動領域選修', required:false, cat:'dept_elective'},
+  {name:'資料視覺化', credit:3, y:2, t:'上', group:'數據創新與智能互動領域選修', required:false, cat:'dept_elective'},
+  {name:'資料庫程式規劃', credit:3, y:3, t:'上', group:'數據創新與智能互動領域選修', required:false, cat:'dept_elective'},
+  {name:'雲端機器學習', credit:2, y:2, t:'暑', group:'數據創新與智能互動領域選修', required:false, cat:'dept_elective'},
+  {name:'非關聯式資料庫', credit:3, y:3, t:'上', group:'數據創新與智能互動領域選修', required:false, cat:'dept_elective'},
+  {name:'數據擷取與應用', credit:2, y:2, t:'暑', group:'數據創新與智能互動領域選修', required:false, cat:'dept_elective'},
+  {name:'網頁與文字探勘', credit:3, y:3, t:'下', group:'數據創新與智能互動領域選修', required:false, cat:'dept_elective'},
+  {name:'智能機器互動設計', credit:3, y:2, t:'暑', group:'數據創新與智能互動領域選修', required:false, cat:'dept_elective'},
+  {name:'人工智慧之提示工程應用與分析', credit:3, y:3, t:'下', group:'數據創新與智能互動領域選修', required:false, cat:'dept_elective'},
+  {name:'數據程式案例研析', credit:3, y:2, t:'暑', group:'數據創新與智能互動領域選修', required:false, cat:'dept_elective'},
+  {name:'數據管理工具研析', credit:2, y:3, t:'暑', group:'數據創新與智能互動領域選修', required:false, cat:'dept_elective'},
+  {name:'數據處理基礎', credit:2, y:2, t:'暑', group:'數據創新與智能互動領域選修', required:false, cat:'dept_elective'},
+  {name:'數據創新與智能互動專題', credit:3, y:3, t:'暑', group:'數據創新與智能互動領域選修', required:false, cat:'dept_elective'},
+  {name:'資訊科技使用者調查法', credit:2, y:2, t:'暑', group:'數據創新與智能互動領域選修', required:false, cat:'dept_elective'},
+];
+
+const CATEGORIES = [
+  {key:'college_required', name:'管院共構必修', required:12},
+  {key:'dept_required', name:'系訂必修', required:49},
+  {key:'dept_elective', name:'系選修', required:39, note:'至少27學分須為系內選修，另可採計外系選修至多12學分（通識、體育、全民國防教育軍訓課程不計入）'},
+  {key:'general_education', name:'通識', required:28, note:'英文6＋核心12＋多元11＝29學分，其中多元-運算思維領域「人工智慧概論」1學分由管院共構必修「人工智慧語言與產業應用」抵免，實際只需另修28學分'},
+];
+
+const GROUPS = [
+  {key:'管院共構必修', title:'管院共構必修', creditNote:'共 12 學分'},
+  {key:'管院共構選修', title:'管院共構選修（不計入系選修，請自行確認歸類）', creditNote:''},
+  {key:'系訂必修', title:'系訂必修', creditNote:'共 49 學分'},
+  {key:'產業實務領域選修', title:'系選修－產業實務領域', creditNote:''},
+  {key:'資訊管理領域選修', title:'系選修－資訊管理領域', creditNote:''},
+  {key:'資訊技術領域選修', title:'系選修－資訊技術領域', creditNote:''},
+  {key:'資通訊安全領域選修', title:'系選修－資通訊安全領域', creditNote:''},
+  {key:'數據創新與智能互動領域選修', title:'系選修－數據創新與智能互動領域', creditNote:''},
+];
+
+// ---- 通識課程資料 ----
+const MULTI_DOMAIN_META = {
+  multi_humanities: '人文藝術',
+  multi_social: '社會科學',
+  multi_science: '自然科學',
+  multi_computing: '運算思維',
+  multi_inter: '跨域學習與實踐',
+};
+
+const GE_COURSES = [
+  // 英文領域 (總計6學分，課表未列每科學分明細，先平均分配為2學分，請自行依實際修課調整)
+  {name:'基礎英文（A）', credit:2, sub:'english'},
+  {name:'基礎英文（B）', credit:2, sub:'english'},
+  {name:'英文閱讀與寫作', credit:2, sub:'english'},
+
+  // 核心課程－藝術與人文思維（6學分）
+  {name:'文學中的現代軌跡', credit:3, sub:'core_art', chinese:true},
+  {name:'傳記文學選讀及寫作', credit:3, sub:'core_art', chinese:true},
+  {name:'現代詩與當代文化', credit:3, sub:'core_art', chinese:true},
+  {name:'寓言-經典與多元思維', credit:3, sub:'core_art', chinese:true},
+  {name:'臺灣詩．鄉土情', credit:3, sub:'core_art', chinese:true},
+  {name:'哲學與文化', credit:3, sub:'core_art'},
+  {name:'音樂的語言', credit:3, sub:'core_art'},
+  {name:'歌劇與歌劇院', credit:3, sub:'core_art'},
+  {name:'倫理與美學：電影與戲劇中的莎士比亞', credit:3, sub:'core_art'},
+  {name:'西洋文學概論：古代作品選讀', credit:3, sub:'core_art'},
+  {name:'歐美戲劇', credit:3, sub:'core_art'},
+  {name:'北美小說、技藝與性別角色', credit:3, sub:'core_art'},
+
+  // 核心課程－公民與社會探究（6學分）
+  {name:'政治學與現代公民', credit:3, sub:'core_civic'},
+  {name:'法學緒論', credit:3, sub:'core_civic'},
+  {name:'現代公民的社會學想像', credit:3, sub:'core_civic'},
+  {name:'經濟學與現代社會', credit:3, sub:'core_civic', restricted:'醫管、資管、工管系不得選修'},
+  {name:'近代東亞的歷史變遷與發展', credit:3, sub:'core_civic'},
+  {name:'社會心理學', credit:3, sub:'core_civic'},
+  {name:'科技法律', credit:3, sub:'core_civic'},
+  {name:'自由主義', credit:3, sub:'core_civic'},
+  {name:'全球與兩岸政治經濟', credit:3, sub:'core_civic'},
+  {name:'管理與現代社會', credit:3, sub:'core_civic', restricted:'醫管、資管、工管系不得選修'},
+  {name:'腦與認知', credit:3, sub:'core_civic'},
+
+  // 多元選修－人文藝術領域
+  {name:'現代詩', credit:2, sub:'multi_humanities'},
+  {name:'詩詞選讀', credit:2, sub:'multi_humanities'},
+  {name:'中文寫作', credit:2, sub:'multi_humanities'},
+  {name:'古典短篇小說選讀', credit:2, sub:'multi_humanities'},
+  {name:'張愛玲小說選讀', credit:2, sub:'multi_humanities'},
+  {name:'文學與人生', credit:2, sub:'multi_humanities'},
+  {name:'紅樓夢之詩詞品賞', credit:2, sub:'multi_humanities'},
+  {name:'臺灣古典文學選讀', credit:2, sub:'multi_humanities'},
+  {name:'史學名著選讀', credit:2, sub:'multi_humanities'},
+  {name:'自然生態文學', credit:2, sub:'multi_humanities'},
+  {name:'音樂與文化', credit:2, sub:'multi_humanities'},
+  {name:'電影與音樂', credit:2, sub:'multi_humanities'},
+  {name:'室內樂作品欣賞與實習', credit:2, sub:'multi_humanities'},
+  {name:'殿堂之外：現代音樂與流行樂文化', credit:2, sub:'multi_humanities'},
+  {name:'交響樂的世界', credit:2, sub:'multi_humanities'},
+  {name:'弦樂欣賞', credit:2, sub:'multi_humanities'},
+  {name:'音樂與情緒', credit:2, sub:'multi_humanities'},
+  {name:'基礎素描', credit:2, sub:'multi_humanities'},
+  {name:'中國繪畫入門', credit:2, sub:'multi_humanities'},
+  {name:'電影與醫學的對話', credit:2, sub:'multi_humanities'},
+  {name:'道家思想導論與導讀', credit:2, sub:'multi_humanities'},
+  {name:'聖經與科學', credit:2, sub:'multi_humanities'},
+  {name:'英美小說選讀', credit:2, sub:'multi_humanities'},
+  {name:'商務英語溝通', credit:2, sub:'multi_humanities'},
+  {name:'新聞英語', credit:2, sub:'multi_humanities'},
+  {name:'國際時事閱讀與會話', credit:2, sub:'multi_humanities'},
+  {name:'英文簡報技巧', credit:2, sub:'multi_humanities'},
+  {name:'旅遊英文', credit:2, sub:'multi_humanities'},
+  {name:'學術英文寫作', credit:2, sub:'multi_humanities'},
+  {name:'職場英語檢定', credit:2, sub:'multi_humanities'},
+  {name:'環境與生態', credit:2, sub:'multi_humanities'},
+  {name:'雅思閱讀與寫作', credit:2, sub:'multi_humanities'},
+  {name:'美國大眾文化與世界', credit:2, sub:'multi_humanities'},
+  {name:'托福英文', credit:2, sub:'multi_humanities'},
+  {name:'社會秩序與犯罪', credit:2, sub:'multi_humanities'},
+  {name:'地域與文化', credit:2, sub:'multi_humanities'},
+  {name:'思考與爭辯的藝術', credit:2, sub:'multi_humanities'},
+  {name:'日文（1）', credit:2, sub:'multi_humanities'},
+  {name:'日文（2）', credit:2, sub:'multi_humanities'},
+  {name:'日文（3）', credit:2, sub:'multi_humanities'},
+  {name:'德文（1）', credit:2, sub:'multi_humanities'},
+  {name:'德文（2）', credit:2, sub:'multi_humanities'},
+  {name:'德文（3）', credit:2, sub:'multi_humanities'},
+  {name:'初階法文', credit:2, sub:'multi_humanities'},
+  {name:'進階法文', credit:2, sub:'multi_humanities'},
+  {name:'西班牙文(1)', credit:2, sub:'multi_humanities'},
+
+  // 多元選修－社會科學領域
+  {name:'中國近、現代史', credit:2, sub:'multi_social'},
+  {name:'歷史與人物', credit:2, sub:'multi_social'},
+  {name:'醫療人權與案例討論', credit:2, sub:'multi_social'},
+  {name:'1960年代專題', credit:2, sub:'multi_social'},
+  {name:'經典閱讀:<羅爾斯正義論>', credit:2, sub:'multi_social'},
+  {name:'醫療與社會', credit:2, sub:'multi_social'},
+  {name:'多元文化、媒體與社會', credit:2, sub:'multi_social'},
+  {name:'賽局理論', credit:2, sub:'multi_social'},
+  {name:'危機調適理論與實務', credit:2, sub:'multi_social'},
+  {name:'科技倫理', credit:2, sub:'multi_social'},
+  {name:'醫學、疾病與現代東亞社會', credit:2, sub:'multi_social'},
+  {name:'傳染病史概論', credit:2, sub:'multi_social'},
+  {name:'影像中的社會與文化', credit:2, sub:'multi_social'},
+  {name:'管理經濟學', credit:2, sub:'multi_social', restricted:'醫管、工管、資管系不得選修'},
+  {name:'財務管理與分析', credit:2, sub:'multi_social', restricted:'工管系不得選修'},
+  {name:'個人理財與投資', credit:2, sub:'multi_social'},
+  {name:'法律與生活', credit:2, sub:'multi_social'},
+  {name:'網路社會學', credit:2, sub:'multi_social'},
+  {name:'兩性關係', credit:2, sub:'multi_social'},
+  {name:'親職教育', credit:2, sub:'multi_social'},
+  {name:'自我探索', credit:2, sub:'multi_social'},
+  {name:'人際溝通', credit:2, sub:'multi_social'},
+  {name:'特殊教育導論', credit:2, sub:'multi_social'},
+  {name:'生涯發展與規劃', credit:2, sub:'multi_social'},
+  {name:'認識銀髮族', credit:2, sub:'multi_social'},
+  {name:'瘟癘瘴蠱', credit:2, sub:'multi_social'},
+  {name:'生命的科學', credit:2, sub:'multi_social'},
+  {name:'生物科技產業之認識與分析', credit:2, sub:'multi_social'},
+  {name:'全球化思維的領導與決策', credit:2, sub:'multi_social'},
+  {name:'媒體素養', credit:2, sub:'multi_social'},
+  {name:'企業組織與工作倫理', credit:2, sub:'multi_social'},
+  {name:'智慧財產權', credit:2, sub:'multi_social'},
+  {name:'團體動力在人際互動的應用', credit:2, sub:'multi_social'},
+  {name:'溝通技巧與領導統御', credit:2, sub:'multi_social'},
+  {name:'情境模擬的創新法則', credit:2, sub:'multi_social'},
+
+  // 多元選修－自然科學領域
+  {name:'營養與保健', credit:2, sub:'multi_science'},
+  {name:'生命科學導論', credit:2, sub:'multi_science'},
+  {name:'藥物與生活', credit:2, sub:'multi_science'},
+  {name:'針灸學概論', credit:2, sub:'multi_science'},
+  {name:'草藥的認識與應用', credit:2, sub:'multi_science'},
+  {name:'中藥的養生保健與美容', credit:2, sub:'multi_science'},
+  {name:'中醫概論', credit:2, sub:'multi_science'},
+  {name:'人類性學概論', credit:2, sub:'multi_science'},
+  {name:'生物技術概論', credit:2, sub:'multi_science'},
+  {name:'自然科技與永續發展應用', credit:2, sub:'multi_science'},
+  {name:'生物技術及生物資訊之發展現況', credit:2, sub:'multi_science'},
+  {name:'趣味數學與量子計算', credit:2, sub:'multi_science'},
+  {name:'大數據之旅-挑戰Kaggle', credit:2, sub:'multi_science', restricted:'資管、資工系、AI學位學程不得選修'},
+  {name:'網頁設計美學', credit:2, sub:'multi_science', restricted:'資管、資工系、AI學位學程不得選修'},
+  {name:'部落格數位生活', credit:2, sub:'multi_science', restricted:'資管、資工系、AI學位學程不得選修'},
+  {name:'程式寫作邏輯導論', credit:2, sub:'multi_science', restricted:'資管、資工系、AI學位學程不得選修'},
+  {name:'資料處理與應用', credit:2, sub:'multi_science', restricted:'資管、資工系、AI學位學程不得選修'},
+  {name:'借力使力人工智慧', credit:2, sub:'multi_science'},
+  {name:'舉一反三人工智慧', credit:2, sub:'multi_science'},
+  {name:'生命科學與工程', credit:2, sub:'multi_science'},
+  {name:'生醫材料概論', credit:2, sub:'multi_science'},
+  {name:'新興能源技術概論', credit:2, sub:'multi_science'},
+  {name:'能源需求與供給的全球衝擊', credit:2, sub:'multi_science'},
+
+  // 多元選修－運算思維領域
+  {name:'人工智慧概論', credit:1, sub:'multi_computing', isAI:true},
+  {name:'程式語言及其醫學應用', credit:2, sub:'multi_computing', restricted:'工程、管理、智慧運算學院不得選修'},
+  {name:'健康應用之程式語言', credit:2, sub:'multi_computing', restricted:'工程、管理、智慧運算學院不得選修'},
+  {name:'R 程式語言入門', credit:2, sub:'multi_computing', restricted:'工管、資管、資工系、AI學位學程不得選修'},
+  {name:'Python 程式語言', credit:2, sub:'multi_computing', restricted:'資管、資工系、AI學位學程不得選修'},
+  {name:'Python 入門與實作', credit:2, sub:'multi_computing', restricted:'資管、資工系、AI學位學程不得選修'},
+  {name:'Python 程式入門', credit:2, sub:'multi_computing', restricted:'資管、資工系、AI學位學程不得選修'},
+
+  // 多元選修－跨域學習與實踐領域
+  {name:'利他行為與生死迷思', credit:2, sub:'multi_inter'},
+  {name:'大學與社區連結', credit:2, sub:'multi_inter'},
+  {name:'從急救案例到人生省思', credit:2, sub:'multi_inter'},
+  {name:'能源與文明永續', credit:2, sub:'multi_inter'},
+  {name:'環境變遷與永續發展策略', credit:2, sub:'multi_inter'},
+  {name:'環境教育與永續發展', credit:2, sub:'multi_inter'},
+  {name:'創新、創意、創業開發課程', credit:2, sub:'multi_inter'},
+  {name:'創業知能', credit:2, sub:'multi_inter'},
+  {name:'量子諧振設計', credit:2, sub:'multi_inter'},
+  {name:'創新設計思考', credit:2, sub:'multi_inter'},
+  {name:'龜山區稻米產業多元化-清酒釀造', credit:1.5, sub:'multi_inter'},
+  {name:'服務學習與營隊活動導論(一)USR與SDGs', credit:0.5, sub:'multi_inter'},
+  {name:'服務學習與營隊活動導論(二)活動規劃', credit:0.5, sub:'multi_inter'},
+  {name:'服務學習與營隊活動導論(三)企劃撰寫與文宣', credit:0.5, sub:'multi_inter'},
+  {name:'服務學習與營隊活動導論(四)法律與團隊經營', credit:0.5, sub:'multi_inter'},
+  {name:'服務學習與營隊活動導論(五)口語表達與溝通技巧', credit:0.5, sub:'multi_inter'},
+  {name:'服務學習與營隊活動導論(六)影像紀錄', credit:0.5, sub:'multi_inter'},
+  {name:'臺灣戰後經濟發展與台塑企業的成長', credit:0.5, sub:'multi_inter'},
+  {name:'環境、社會、治理－台塑企業的實踐', credit:0.5, sub:'multi_inter'},
+  {name:'正念減壓與情緒管理', credit:0.5, sub:'multi_inter'},
+  {name:'田野調查：跨領域應用與實作', credit:0.5, sub:'multi_inter'},
+];
+
+const SUB_META = {
+  english: {title:'英文領域', required:6},
+  core_art: {title:'核心課程－藝術與人文思維', required:6, needChinese:true},
+  core_civic: {title:'核心課程－公民與社會探究', required:6},
+  multi_humanities: {title:'多元選修－人文藝術領域'},
+  multi_social: {title:'多元選修－社會科學領域'},
+  multi_science: {title:'多元選修－自然科學領域'},
+  multi_computing: {title:'多元選修－運算思維領域'},
+  multi_inter: {title:'多元選修－跨域學習與實踐領域'},
+};
+
+const SUB_ORDER = ['english','core_art','core_civic','multi_humanities','multi_social','multi_science','multi_computing','multi_inter'];
+
+const STORAGE_KEY = 'gradtrack_bs112_checked';
+const GE_STORAGE_KEY = 'gradtrack_bs112_ge_checked';
+const GE_CREDIT_OVERRIDE_KEY = 'gradtrack_bs112_ge_credit_override';
+const EXTERNAL_ELECTIVE_KEY = 'gradtrack_bs112_external_elective';
+
+function loadJSON(key) {
+  try { return JSON.parse(localStorage.getItem(key)) || {}; }
+  catch (e) { return {}; }
+}
+function saveJSON(key, obj) { localStorage.setItem(key, JSON.stringify(obj)); }
+
+let checked = loadJSON(STORAGE_KEY);
+let geChecked = loadJSON(GE_STORAGE_KEY);
+let geCreditOverride = loadJSON(GE_CREDIT_OVERRIDE_KEY);
+
+function courseKey(c) { return c.group + '|' + c.name; }
+function geKey(c) { return c.sub + '|' + c.name; }
+function geCredit(c) {
+  const k = geKey(c);
+  return geCreditOverride.hasOwnProperty(k) ? geCreditOverride[k] : c.credit;
+}
+
+function renderTables() {
+  const container = document.getElementById('tablesContainer');
+  container.innerHTML = '';
+  GROUPS.forEach(g => {
+    const coursesInGroup = COURSES.filter(c => c.group === g.key);
+    if (coursesInGroup.length === 0) return;
+
+    const titleEl = document.createElement('div');
+    titleEl.className = 'group-title';
+    titleEl.innerHTML = g.title + (g.creditNote ? `<span class="credit-tag">${g.creditNote}</span>` : '');
+    container.appendChild(titleEl);
+
+    if (g.key === '管院共構選修') {
+      const note = document.createElement('div');
+      note.className = 'elective-note';
+      note.textContent = '這些課程原始課表歸類在管院共構選修，是否計入系選修外系學分上限請自行向系辦確認。';
+      container.appendChild(note);
+    }
+
+    const wrap = document.createElement('div');
+    wrap.className = 'table-wrap';
+    const table = document.createElement('table');
+    table.className = 'course-table';
+
+    const thead = document.createElement('thead');
+    const trHead = document.createElement('tr');
+    YEAR_TERMS.forEach(yt => {
+      const th = document.createElement('th');
+      th.textContent = yt.label;
+      trHead.appendChild(th);
+    });
+    thead.appendChild(trHead);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    const tr = document.createElement('tr');
+    YEAR_TERMS.forEach(yt => {
+      const td = document.createElement('td');
+      const cellCourses = coursesInGroup.filter(c => c.y === yt.y && c.t === yt.t);
+      cellCourses.forEach(c => {
+        const key = courseKey(c);
+        const item = document.createElement('label');
+        item.className = 'course-item' + (checked[key] ? ' checked' : '');
+        item.innerHTML = `<input type="checkbox" ${checked[key] ? 'checked' : ''} data-key="${key}">
+          <span>${c.name}<br><span class="credit">${c.credit} 學分</span></span>`;
+        td.appendChild(item);
+      });
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+    container.appendChild(wrap);
+  });
+
+  renderGE(container);
+
+  container.querySelectorAll('input[type=checkbox][data-key]').forEach(cb => {
+    cb.addEventListener('change', e => {
+      const key = e.target.dataset.key;
+      checked[key] = e.target.checked;
+      saveJSON(STORAGE_KEY, checked);
+      e.target.closest('.course-item').classList.toggle('checked', e.target.checked);
+      renderSummary();
+    });
+  });
+}
+
+function renderGE(container) {
+  const title = document.createElement('div');
+  title.className = 'group-title';
+  title.innerHTML = '通識課程（112學年度第一學期通識課程表）<span class="credit-tag">灰色為系上不得選修</span>';
+  container.appendChild(title);
+
+  const note = document.createElement('div');
+  note.className = 'elective-note';
+  note.textContent = '核心課程每科3學分、多元選修每科2學分為課表載明之標準學分數（英文領域3科合計6學分、課表未列個別學分，先平均分配）；微學分課程與少數特殊課程學分已個別標示。若與你實際修課學分不同，可直接修改右側數字。';
+  container.appendChild(note);
+
+  SUB_ORDER.forEach(subKey => {
+    const meta = SUB_META[subKey];
+    const list = GE_COURSES.filter(c => c.sub === subKey);
+    const domain = document.createElement('div');
+    domain.className = 'ge-domain';
+    const reqTag = meta.required ? `<span class="credit-tag">共 ${meta.required} 學分</span>` : `<span class="credit-tag">${MULTI_DOMAIN_META[subKey]}領域</span>`;
+    domain.innerHTML = `<div class="ge-domain-head"><span>${meta.title}</span>${reqTag}</div>`;
+
+    const grid = document.createElement('div');
+    grid.className = 'ge-grid';
+    list.forEach(c => {
+      const key = geKey(c);
+      const isChecked = !!geChecked[key];
+      const cred = geCredit(c);
+      const item = document.createElement('label');
+      item.className = 'course-item' + (isChecked ? ' checked' : '') + (c.restricted ? ' restricted' : '');
+      if (c.restricted) {
+        item.innerHTML = `<input type="checkbox" disabled>
+          <span>${c.name}<span class="restrict-note">${c.restricted}</span></span>`;
+      } else {
+        item.innerHTML = `<input type="checkbox" ${isChecked ? 'checked' : ''} data-ge-key="${key}">
+          <span>${c.name}${c.chinese ? '<span class="tag-chinese">中文類</span>' : ''}${c.isAI ? '<span class="tag-chinese">已由管院共構必修抵免</span>' : ''}<br>
+          <input type="number" class="cred-input" step="0.5" min="0" value="${cred}" data-ge-credit-key="${key}"> 學分</span>`;
+      }
+      grid.appendChild(item);
+    });
+    domain.appendChild(grid);
+    container.appendChild(domain);
+  });
+
+  container.querySelectorAll('input[type=checkbox][data-ge-key]').forEach(cb => {
+    cb.addEventListener('change', e => {
+      const key = e.target.dataset.geKey;
+      geChecked[key] = e.target.checked;
+      saveJSON(GE_STORAGE_KEY, geChecked);
+      e.target.closest('.course-item').classList.toggle('checked', e.target.checked);
+      renderSummary();
+    });
+  });
+  container.querySelectorAll('input[data-ge-credit-key]').forEach(inp => {
+    inp.addEventListener('input', e => {
+      const key = e.target.dataset.geCreditKey;
+      geCreditOverride[key] = parseFloat(e.target.value) || 0;
+      saveJSON(GE_CREDIT_OVERRIDE_KEY, geCreditOverride);
+      renderSummary();
+    });
+  });
+}
+
+function getExternalElective() {
+  const v = parseFloat(localStorage.getItem(EXTERNAL_ELECTIVE_KEY));
+  return isNaN(v) ? 0 : v;
+}
+
+function round1(n) { return Math.round(n * 10) / 10; }
+
+function computeGE() {
+  const bySub = {};
+  SUB_ORDER.forEach(s => bySub[s] = 0);
+  GE_COURSES.forEach(c => {
+    if (c.restricted) return;
+    if (geChecked[geKey(c)]) bySub[c.sub] += geCredit(c);
+  });
+
+  const aiExempt = !!checked['管院共構必修|人工智慧語言與產業應用'];
+  // 多元-運算思維領域：AI概論 1 學分若透過管院共構必修抵免則自動視為已涵蓋（不重複計入128總學分，只用於子規則判斷）
+  const computingRaw = bySub.multi_computing + (aiExempt ? 1 : 0);
+
+  const multiDomains = ['multi_humanities','multi_social','multi_science','multi_computing','multi_inter'];
+  const domainCovered = multiDomains.filter(d => (d === 'multi_computing' ? computingRaw : bySub[d]) > 0).length;
+
+  const multiRealTotal = multiDomains.reduce((sum, d) => sum + (d === 'multi_computing' ? bySub[d] : bySub[d]), 0);
+  const multiRawTotal = multiRealTotal + (aiExempt ? 1 : 0);
+  const multiTarget = aiExempt ? 10 : 11;
+
+  const total = bySub.english + bySub.core_art + bySub.core_civic + multiRealTotal;
+
+  return { bySub, aiExempt, computingRaw, domainCovered, multiRawTotal, multiTarget, total };
+}
+
+function renderSummary() {
+  const ge = computeGE();
+
+  const totals = {};
+  CATEGORIES.forEach(c => totals[c.key] = 0);
+
+  COURSES.forEach(c => {
+    if (checked[courseKey(c)] && totals.hasOwnProperty(c.cat)) {
+      totals[c.cat] += c.credit;
+    }
+  });
+  totals.general_education = ge.total;
+
+  const grandTotal = Object.values(totals).reduce((a,b) => a+b, 0);
+  const GRAD_TOTAL = 128;
+
+  document.getElementById('totalNum').innerHTML = `${round1(grandTotal)}<span> / ${GRAD_TOTAL}</span>`;
+  document.getElementById('totalBar').style.width = Math.min(100, grandTotal / GRAD_TOTAL * 100) + '%';
+
+  const catPanel = document.getElementById('categoryPanel');
+  catPanel.innerHTML = '<h2>分類進度</h2>';
+  CATEGORIES.forEach(c => {
+    const val = totals[c.key];
+    const pct = Math.min(100, val / c.required * 100);
+    const row = document.createElement('div');
+    row.className = 'cat-row' + (val >= c.required ? ' done' : '');
+    row.innerHTML = `
+      <div class="cat-row-head">
+        <span class="name">${c.name}</span>
+        <span class="num">${round1(val)} / ${c.required}</span>
+      </div>
+      <div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div>
+      ${c.note ? `<div class="elective-note">${c.note}</div>` : ''}
+    `;
+    if (c.key === 'dept_elective') {
+      const deptInternal = totals.dept_elective;
+      const ext = getExternalElective();
+      const manualDiv = document.createElement('div');
+      manualDiv.className = 'manual-input';
+      manualDiv.innerHTML = `<label style="font-size:12px;color:var(--muted)">外系選修學分（至多採計12）：</label>
+        <input type="number" min="0" step="0.5" id="extInput" value="${ext}">`;
+      row.appendChild(manualDiv);
+    }
+    catPanel.appendChild(row);
+  });
+
+  const extInput = document.getElementById('extInput');
+  if (extInput) {
+    extInput.addEventListener('input', e => {
+      localStorage.setItem(EXTERNAL_ELECTIVE_KEY, e.target.value);
+      renderSummary();
+    });
+  }
+
+  // 細項規則檢查
+  const ext = getExternalElective();
+  const extCounted = Math.min(ext, 12);
+  const deptInternal = totals.dept_elective;
+  const rules = [
+    {label:'系選修－系內至少27學分', val:`${round1(deptInternal)}/27`, ok: deptInternal >= 27},
+    {label:'系選修－外系至多採計12學分', val:`${round1(extCounted)}/12（實填${round1(ext)}）`, ok: true},
+    {label:'系選修－總計至少39學分', val:`${round1(deptInternal+extCounted)}/39`, ok: (deptInternal+extCounted) >= 39},
+    {label:'通識－英文領域至少6學分', val:`${round1(ge.bySub.english)}/6`, ok: ge.bySub.english >= 6},
+    {label:'通識－核心藝術人文至少6學分（含1門中文類）', val:`${round1(ge.bySub.core_art)}/6`, ok: ge.bySub.core_art >= 6 && GE_COURSES.some(c => c.sub==='core_art' && c.chinese && geChecked[geKey(c)])},
+    {label:'通識－核心公民社會至少6學分', val:`${round1(ge.bySub.core_civic)}/6`, ok: ge.bySub.core_civic >= 6},
+    {label:`通識－多元選修至少${ge.multiTarget}學分${ge.aiExempt ? '（已扣抵AI概論1學分）' : ''}`, val:`${round1(ge.multiRawTotal)}/${ge.multiTarget}`, ok: ge.multiRawTotal >= ge.multiTarget},
+    {label:'通識－多元選修至少涵蓋3個領域', val:`${ge.domainCovered}/3`, ok: ge.domainCovered >= 3},
+  ];
+  document.getElementById('ruleList').innerHTML = rules.map(r =>
+    `<li><span>${r.label}</span><span class="${r.ok ? 'ok' : 'bad'}">${r.val} ${r.ok ? '✓' : '✗'}</span></li>`
+  ).join('');
+
+  const missingList = document.getElementById('missingList');
+  const missing = COURSES.filter(c => c.required && !checked[courseKey(c)]);
+  if (missing.length === 0) {
+    missingList.innerHTML = '<div class="missing-empty">必修課程皆已完成</div>';
+  } else {
+    missingList.innerHTML = missing.map(c => `<li>${c.name}（${c.group}，${c.credit}學分）</li>`).join('');
+  }
+}
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if (confirm('確定要清除所有勾選紀錄嗎？此動作無法復原。')) {
+    checked = {};
+    geChecked = {};
+    geCreditOverride = {};
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(GE_STORAGE_KEY);
+    localStorage.removeItem(GE_CREDIT_OVERRIDE_KEY);
+    localStorage.removeItem(EXTERNAL_ELECTIVE_KEY);
+    renderTables();
+    renderSummary();
+  }
+});
+
+// ---- 批次匯入 ----
+function normalizeName(s) {
+  return s
+    .replace(/[\s　]+/g, '')
+    .replace(/[（(]/g, '(')
+    .replace(/[）)]/g, ')')
+    .replace(/[：:]/g, ':')
+    .replace(/[，,]/g, ',')
+    .replace(/[０-９]/g, d => String.fromCharCode(d.charCodeAt(0) - 0xFEE0))
+    .toLowerCase();
+}
+
+function buildCourseIndex() {
+  const idx = new Map();
+  COURSES.forEach(c => {
+    idx.set(normalizeName(c.name), {type:'dept', key: courseKey(c)});
+  });
+  GE_COURSES.forEach(c => {
+    if (c.restricted) return;
+    const norm = normalizeName(c.name);
+    if (!idx.has(norm)) idx.set(norm, {type:'ge', key: geKey(c)});
+  });
+  return idx;
+}
+
+document.getElementById('importBtn').addEventListener('click', () => {
+  const text = document.getElementById('importText').value;
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const idx = buildCourseIndex();
+  let matched = 0;
+  const unmatched = [];
+
+  lines.forEach(line => {
+    const candidates = [line];
+    const splitTokens = line.split(/\t+|\s{2,}|,/).map(t => t.trim()).filter(Boolean);
+    if (splitTokens.length > 1) candidates.push(splitTokens[0]);
+    const strippedTrailing = line.replace(/([\s\t]+[\d.]+)+\s*$/, '').trim();
+    if (strippedTrailing && strippedTrailing !== line) candidates.push(strippedTrailing);
+
+    let found = null;
+    for (const cand of candidates) {
+      const hit = idx.get(normalizeName(cand));
+      if (hit) { found = hit; break; }
+    }
+    if (!found) { unmatched.push(line); return; }
+
+    matched++;
+    if (found.type === 'dept') {
+      checked[found.key] = true;
+    } else {
+      geChecked[found.key] = true;
+      const nums = (line.match(/\d+(\.\d+)?/g) || []).map(Number).filter(n => n > 0 && n <= 10);
+      if (nums.length) geCreditOverride[found.key] = nums[0];
+    }
+  });
+
+  saveJSON(STORAGE_KEY, checked);
+  saveJSON(GE_STORAGE_KEY, geChecked);
+  saveJSON(GE_CREDIT_OVERRIDE_KEY, geCreditOverride);
+  renderTables();
+  renderSummary();
+
+  document.getElementById('importResult').textContent =
+    `共 ${lines.length} 行，成功比對 ${matched} 筆，未辨識 ${unmatched.length} 筆`;
+  document.getElementById('importUnmatched').innerHTML = unmatched.length
+    ? unmatched.map(l => `<li>${l}</li>`).join('')
+    : '';
+});
+
+renderTables();
+renderSummary();
+</script>
+
+</body>
+</html>
