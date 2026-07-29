@@ -821,10 +821,19 @@ document.getElementById('resetBtn').addEventListener('click', () => {
 });
 
 // ---- 批次匯入 ----
+// 常見的隱藏/零寬字元代碼（例如從 Word、M365 Copilot 複製貼上時夾帶的零寬空白、BOM、雙向文字控制字元）
+// 用 charCode 組出來，避免原始碼裡直接放隱藏字元（GitHub 會把這類字元標記為可疑的雙向文字）
+const INVISIBLE_CHAR_CODES = [
+  0x200B, 0x200C, 0x200D, 0x200E, 0x200F, // zero-width space/joiner/LTR-RTL marks
+  0x202A, 0x202B, 0x202C, 0x202D, 0x202E, // bidi embedding/override controls
+  0x2060, 0xFEFF, 0x00AD                   // word joiner, BOM, soft hyphen
+];
+const INVISIBLE_CHAR_RE = new RegExp('[' + INVISIBLE_CHAR_CODES.map(c => String.fromCharCode(c)).join('') + ']', 'g');
+
 function normalizeName(s) {
   return s
     .normalize('NFKC')
-    .replace(/[​-‏‪-‮⁠﻿­]/g, '')
+    .replace(INVISIBLE_CHAR_RE, '')
     .replace(/[\s　]+/g, '')
     .replace(/[（(]/g, '(')
     .replace(/[）)]/g, ')')
