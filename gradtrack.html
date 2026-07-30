@@ -781,7 +781,11 @@ function renderSummary() {
   // 系選修分類進度／總學分進度都要含採計的外系選修學分，才會跟下方細項規則檢查一致
   totals.dept_elective = deptInternal + extCounted;
 
-  const grandTotal = Object.values(totals).reduce((a,b) => a+b, 0);
+  // 管院共構選修（cat: 'other'）目前無法確認歸類，只算進總學分，不算進任何分類小項
+  const otherTotal = COURSES.filter(c => c.cat === 'other' && checked[courseKey(c)])
+    .reduce((sum, c) => sum + c.credit, 0);
+
+  const grandTotal = Object.values(totals).reduce((a,b) => a+b, 0) + otherTotal;
   const GRAD_TOTAL = 128;
 
   document.getElementById('totalNum').innerHTML = `${round1(grandTotal)}<span> / ${GRAD_TOTAL}</span>`;
